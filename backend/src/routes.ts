@@ -1,108 +1,57 @@
-import { FastifyInstance } from 'fastify'
-import { PrismaClient } from '@prisma/client'
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
-export async function appRoutes(server: FastifyInstance) {
+// NOTICE: We are using "export async function" here
+export async function registerRoutes(app: FastifyInstance) {
 
-  // ==========================================
-  // 1. PUBLIC CATALOG API (Consumer Facing)
-  // ==========================================
+  // --- Login Route ---
+  app.post('/api/login', async (req: FastifyRequest, reply: FastifyReply) => {
+    const { email, password } = req.body as any;
+    const user = await prisma.user.findUnique({ where: { email } });
 
-  server.get('/catalog/programs', async (request, reply) => {
-    const programs = await prisma.program.findMany({
-      where: {
-        status: 'PUBLISHED',
-        terms: { some: { lessons: { some: { status: 'PUBLISHED' } } } }
-      },
-      include: { assets: true, topics: true },
-      orderBy: { publishedAt: 'desc' }
-    })
-    return { data: programs }
-  })
+    if (!user) {
+      return reply.status(401).send({ error: 'Invalid credentials' });
+    }
 
-  server.get('/catalog/programs/:id', async (request, reply) => {
-    const { id } = request.params as { id: string }
-    const program = await prisma.program.findUnique({
-      where: { id },
-      include: {
-        assets: true,
-        topics: true,
-        terms: {
-          include: {
-            lessons: {
-              where: { status: 'PUBLISHED' },
-              orderBy: { lessonNumber: 'asc' }
-            }
-          },
-          orderBy: { termNumber: 'asc' }
-        }
-      }
-    })
-    return { data: program }
-  })
+    // Compare passwords
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return reply.status(401).send({ error: 'Invalid credentials' });
+    }
 
-  // ==========================================
-  // 2. CMS INTERNAL API (Admin/Editor)
-  // ==========================================
+    return { token: 'fake-jwt-token', user: { email: user.email, role: user.role } };
+  });
 
-  // Login (Mock)
-  server.post('/api/login', async (request, reply) => {
-    const { email } = request.body as any
-    const user = await prisma.user.findUnique({ where: { email } })
-    if (!user) return reply.code(401).send({ error: 'Invalid user' })
-    return { token: 'mock-token', user: { email: user.email, role: user.role } }
-  })
+  // --- CRUD for Programs ---
+  app.get('/api/programs', async () => {
+    return await prisma.program.findMany();
+  });
 
-  // Get All Programs (CMS)
-  server.get('/api/programs', async () => {
-    return await prisma.program.findMany({
-      include: { assets: true },
-      orderBy: { updatedAt: 'desc' }
-    })
-  })
-
-  // Get Program Details (CMS)
-  server.get('/api/programs/:id', async (request) => {
-    const { id } = request.params as { id: string }
-    return await prisma.program.findUnique({
-      where: { id },
-      include: { 
-        assets: true, 
-        topics: true,
-        terms: {
-          include: { lessons: true },
-          orderBy: { termNumber: 'asc' }
-        }
-      }
-    })
-  })
-
-  // "Backstage Pass" - Get ANY Lesson by ID (Drafts included)
-  server.get('/api/lessons/:id', async (request, reply) => {
-    const { id } = request.params as { id: string }
-    const lesson = await prisma.lesson.findUnique({ where: { id } })
-    
-    if (!lesson) return reply.code(404).send({ error: 'Lesson not found' })
-    return { data: lesson }
-  })
-
-  // UPDATE LESSON (The Scheduler)
-  server.put('/api/lessons/:id', async (request) => {
-    const { id } = request.params as { id: string }
-    const data = request.body as any
-    
-    console.log(`Updating lesson ${id} to status: ${data.status}`); // Debug log
-
-    return await prisma.lesson.update({
-      where: { id },
+  app.post('/api/programs', async (req: FastifyRequest) => {
+    const data = req.body as any;
+    return await prisma.program.create({
       data: {
         title: data.title,
-        status: data.status,
-        // Safe date conversion
-        publishAt: data.publishAt ? new Date(data.publishAt) : null,
-        publishedAt: data.status === 'PUBLISHED' ? new Date() : null
+        description: data.description,
+        status: "DRAFT", // Default for now
+        languagePrimary: "en",
+        languagesAvailable: "en"
       }
-    })
-  })
+    });
+  });
+  
+  // --- Public Catalog ---
+  app.get('/api/catalog', async () => {
+    return await prisma.lesson.findMany({
+      where: { status: 'PUBLISHED' },
+      include: {
+        term: {
+          include: { program: true }
+        }
+      }
+    });
+  });
 }
