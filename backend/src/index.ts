@@ -1,42 +1,69 @@
-import Fastify from 'fastify'
-import cors from '@fastify/cors'
-import { runWorker } from './worker'
-import { PrismaClient } from '@prisma/client'
-import { appRoutes } from './routes'
+import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import { PrismaClient } from '@prisma/client';
+import { registerRoutes } from './routes';
+import { runScheduler } from './services/scheduler';
+import bcrypt from 'bcrypt'; // Make sure this is imported
 
-const prisma = new PrismaClient()
-const server = Fastify({ logger: true })
+const app = Fastify({ logger: true });
+const prisma = new PrismaClient();
 
-// FIX: Explicitly allow PUT and other methods
-server.register(cors, { 
-  origin: true, // Allow any origin (like your frontend)
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // <--- Explicitly allow PUT
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-})
+// Register CORS
+app.register(cors, {
+  origin: true, // Allow all origins for simplicity
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+});
 
-server.register(appRoutes)
+// Register API Routes
+app.register(registerRoutes);
 
-server.get('/health', async (request, reply) => {
+// --- AUTO-SEED SCRIPT ---
+async function seedAdminUser() {
+  const email = 'admin@chaishots.com';
+  console.log(`Checking for admin user: ${email}...`);
+  
   try {
-    await prisma.$queryRaw`SELECT 1` 
-    return { status: 'OK', database: 'connected' }
-  } catch (err) {
-    reply.code(500)
-    return { status: 'ERROR', database: 'disconnected' }
-  }
-})
-
-const start = async () => {
-  try {
-    runWorker()
-    // Listen on 0.0.0.0 to accept connections from all network cards
-    await server.listen({ port: 3000, host: '0.0.0.0' })
-    console.log('🚀 Server running at http://localhost:3000')
-  } catch (err) {
-    server.log.error(err)
-    process.exit(1)
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (!existingUser) {
+      console.log('Admin user not found. Creating now...');
+      // Hash password "123456"
+      const hashedPassword = await bcrypt.hash('123456', 10);
+      
+      await prisma.user.create({
+        data: {
+          email,
+          name: 'Super Admin',
+          password: hashedPassword,
+          role: 'ADMIN',
+        },
+      });
+      console.log('✅ Admin user created successfully!');
+    } else {
+      console.log('👍 Admin user already exists.');
+    }
+  } catch (error) {
+    console.error('Error seeding admin user:', error);
   }
 }
 
-start()
+// Start Server
+const start = async () => {
+  try {
+    // 1. Run the Auto-Seed
+    await seedAdminUser();
+
+    // 2. Start the Server
+    const port = parseInt(process.env.PORT || '3000');
+    await app.listen({ port, host: '0.0.0.0' });
+    console.log(`🚀 Server running at http://localhost:${port}`);
+
+    // 3. Start the Scheduler
+    runScheduler();
+
+  } catch (err) {
+    app.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();

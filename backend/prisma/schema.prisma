@@ -12,7 +12,8 @@ model User {
   id        String   @id @default(uuid())
   email     String   @unique
   name      String?
-  role      String   @default("EDITOR") // Changed from Enum to String
+  password  String   // <-- THIS WAS MISSING!
+  role      String   @default("EDITOR")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
