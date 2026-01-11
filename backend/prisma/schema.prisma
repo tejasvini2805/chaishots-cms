@@ -12,7 +12,7 @@ model User {
   id        String   @id @default(uuid())
   email     String   @unique
   name      String?
-  role      String   @default("EDITOR") // Changed Enum to String
+  role      String   @default("EDITOR") // Changed from Enum to String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -29,7 +29,7 @@ model Program {
   languagePrimary    String   @default("en") @map("language_primary")
   languagesAvailable String   @default("en") @map("languages_available")
   
-  status             String   @default("DRAFT") // Changed Enum to String
+  status             String   @default("DRAFT") // Changed from Enum to String
   
   publishedAt        DateTime? @map("published_at")
   createdAt          DateTime  @default(now()) @map("created_at")
@@ -76,7 +76,7 @@ model Lesson {
   subtitleLanguages         String @default("") @map("subtitle_languages")
   subtitleUrls              String @default("{}") @map("subtitle_urls_by_language")
 
-  status          String    @default("DRAFT") // Changed Enum to String
+  status          String    @default("DRAFT") // Changed from Enum to String
   publishAt       DateTime? @map("publish_at")
   publishedAt     DateTime? @map("published_at")
   
