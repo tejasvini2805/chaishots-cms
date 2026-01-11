@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: chaishots_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: chaishots_cms
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: ./backend
+    container_name: chaishots_api
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://admin:password@db:5432/chaishots_cms
+      PORT: 3000
+      JWT_SECRET: supersecret
+    depends_on:
+      - db
+    command: npm start
+
+volumes:
+  postgres_data:
