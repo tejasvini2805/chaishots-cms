@@ -7,30 +7,33 @@ export async function registerRoutes(app: FastifyInstance) {
 
   // --- NUCLEAR LOGIN: ALWAYS SAY YES ---
   app.post('/api/login', async (req: FastifyRequest, reply: FastifyReply) => {
-    // We ignore the password check completely.
-    // We ignore the email check completely.
-    // We just hand over the keys.
     return { 
       token: 'emergency-access-token', 
       user: { email: 'admin@chaishots.com', role: 'ADMIN' } 
     };
   });
 
-  // --- Create Programs ---
+  // --- SAFE CREATE PROGRAM (Fixes the "Click" issue) ---
   app.post('/api/programs', async (req: FastifyRequest) => {
     const data = req.body as any;
+
+    // FIX: Convert complex lists into simple strings so SQLite doesn't crash
+    const langAvailable = Array.isArray(data.languagesAvailable) 
+      ? data.languagesAvailable.join(',') 
+      : "en";
+
     return await prisma.program.create({
       data: {
-        title: data.title,
-        description: data.description,
+        title: data.title || "New Program",
+        description: data.description || "",
         status: "DRAFT",
         languagePrimary: "en",
-        languagesAvailable: "en"
+        languagesAvailable: langAvailable // <--- The fix is here
       }
     });
   });
 
-  // --- Get Programs (For Admin Dashboard) ---
+  // --- Get Programs ---
   app.get('/api/programs', async () => {
     return await prisma.program.findMany();
   });
