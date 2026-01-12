@@ -5,23 +5,22 @@ const prisma = new PrismaClient();
 
 export async function registerRoutes(app: FastifyInstance) {
 
-  // --- THE MAGIC SETUP ROUTE ---
-  // Visit this link to force-create the course
+  // --- THE MAGIC SETUP ROUTE (UPDATED) ---
   app.get('/api/setup', async (req: FastifyRequest, reply: FastifyReply) => {
     try {
-      console.log("🛠️ Starting Manual Setup...");
+      console.log("🛠️ Fixing Course Visibility...");
 
-      // 1. WIPE OLD DATA (To prevent conflicts)
+      // 1. DELETE OLD DRAFTS
       await prisma.lesson.deleteMany({});
       await prisma.term.deleteMany({});
       await prisma.program.deleteMany({});
       
-      // 2. CREATE PROGRAM
+      // 2. CREATE PUBLISHED PROGRAM (This was the missing key!)
       const program = await prisma.program.create({
         data: {
           title: "Mastering AI Agents",
           description: "Full Stack AI Course",
-          status: "DRAFT",
+          status: "PUBLISHED", // <--- CHANGED FROM 'DRAFT' TO 'PUBLISHED'
           languagePrimary: "en",
           languagesAvailable: "en" 
         }
@@ -36,12 +35,12 @@ export async function registerRoutes(app: FastifyInstance) {
         }
       });
 
-      // 4. CREATE PUBLISHED LESSON
+      // 4. CREATE LESSON
       await prisma.lesson.create({
         data: {
           title: "Introduction to Agents",
           lessonNumber: 1,
-          status: "PUBLISHED", // <--- CRITICAL
+          status: "PUBLISHED",
           termId: term.id,
           contentUrls: "{}",
           subtitleUrls: "{}",
@@ -50,7 +49,7 @@ export async function registerRoutes(app: FastifyInstance) {
         }
       });
 
-      return { status: "SUCCESS", message: "✅ Course Created! Go refresh your frontend." };
+      return { status: "SUCCESS", message: "✅ Course is now PUBLISHED! Refresh frontend." };
 
     } catch (err: any) {
       console.error(err);
@@ -58,7 +57,7 @@ export async function registerRoutes(app: FastifyInstance) {
     }
   });
 
-  // --- KEEP EXISTING ROUTES ---
+  // --- STANDARD ROUTES ---
   app.post('/api/login', async () => ({ token: 'emergency', user: { email: 'admin', role: 'ADMIN' } }));
   
   app.post('/api/programs', async (req: FastifyRequest) => {
@@ -73,12 +72,13 @@ export async function registerRoutes(app: FastifyInstance) {
     });
   });
 
+  // Updated Catalog Route: Return Programs, not Lessons (Just in case)
   app.get('/api/programs', async () => await prisma.program.findMany());
   
   app.get('/api/catalog', async () => {
-    return await prisma.lesson.findMany({
-      where: { status: 'PUBLISHED' },
-      include: { term: { include: { program: true } } }
+    // Return PUBLISHED PROGRAMS
+    return await prisma.program.findMany({
+      where: { status: 'PUBLISHED' }
     });
   });
 }
