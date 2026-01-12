@@ -1,68 +1,76 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { PrismaClient } from '@prisma/client';
-import { registerRoutes } from './routes';
+import { registerRoutes } from './routes'; 
 
 const app = Fastify({ logger: true });
 const prisma = new PrismaClient();
 
 // 1. Enable CORS
 app.register(cors, {
-  origin: true,
+  origin: true, 
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 });
 
 // 2. Register Routes
 app.register(registerRoutes);
 
-// --- AUTO-PILOT SCRIPT: CREATE COURSE & CONTENT ---
+// --- AUTO-PILOT: STRICT MODE ---
 async function seedDatabase() {
   try {
-    // Check if we already have the course to avoid duplicates
-    const existing = await prisma.program.findFirst({
-      where: { title: "Mastering AI Agents" }
-    });
+    console.log("🌱 Auto-Pilot: Checking for content...");
 
-    if (!existing) {
-      console.log("🌱 Auto-Pilot: Creating Course Content...");
-
-      // 1. Create Program
-      const program = await prisma.program.create({
+    // 1. Create (or find) the Program
+    let program = await prisma.program.findFirst({ where: { title: "Mastering AI Agents" } });
+    
+    if (!program) {
+      console.log("Creating Program...");
+      program = await prisma.program.create({
         data: {
           title: "Mastering AI Agents",
           description: "Full Stack AI Course",
           status: "DRAFT",
           languagePrimary: "en",
-          languagesAvailable: "en"
+          languagesAvailable: ["en"] // Fixed: Passed as an Array
         }
       });
+    }
 
-      // 2. Create Term
-      const term = await prisma.term.create({
+    // 2. Create (or find) the Term
+    let term = await prisma.term.findFirst({ where: { programId: program.id } });
+    if (!term) {
+      console.log("Creating Term...");
+      term = await prisma.term.create({
         data: {
           title: "Term 1: Foundations",
           termNumber: 1,
           programId: program.id
         }
       });
+    }
 
-      // 3. Create PUBLISHED Lesson (This makes it show up public!)
+    // 3. FORCE CREATE A PUBLISHED LESSON
+    const existingLesson = await prisma.lesson.findFirst({ where: { termId: term.id } });
+    if (!existingLesson) {
+      console.log("Creating PUBLISHED Lesson...");
       await prisma.lesson.create({
         data: {
           title: "Introduction to Agents",
-          description: "Welcome to the future of AI.",
           lessonNumber: 1,
-          status: "PUBLISHED", // <--- CRITICAL
+          status: "PUBLISHED", 
           termId: term.id,
           contentUrls: "{}",
-          subtitleUrls: "{}"
+          subtitleUrls: "{}",
+          // --- THE MISSING FIELDS (FIXED) ---
+          contentType: "VIDEO",
+          contentLanguagePrimary: "en"
         }
       });
-
-      console.log("✅ Auto-Pilot: Content Created Successfully!");
+      console.log("✅ SUCCESS: Lesson Created and Published!");
     } else {
-      console.log("👍 Auto-Pilot: Content already exists.");
+      console.log("👍 Content already exists.");
     }
+
   } catch (err) {
     console.error("Auto-Pilot Error:", err);
   }
@@ -71,7 +79,7 @@ async function seedDatabase() {
 // 3. Start Server
 const start = async () => {
   try {
-    // Run the Auto-Pilot before starting
+    // Run the Auto-Pilot BEFORE listening
     await seedDatabase();
 
     const port = parseInt(process.env.PORT || '3000');
