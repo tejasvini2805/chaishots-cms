@@ -1,19 +1,18 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { PrismaClient } from '@prisma/client';
-// We import the specific function we created
-import { registerRoutes } from './routes'; 
+import { registerRoutes } from './routes';
 
 const app = Fastify({ logger: true });
 const prisma = new PrismaClient();
 
-// 1. Register CORS (Allows Frontend to talk to Backend)
+// 1. Enable CORS (So Frontend can talk to Backend)
 app.register(cors, {
-  origin: true, 
+  origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 });
 
-// 2. Register Your Routes
+// 2. Register Routes
 app.register(registerRoutes);
 
 // 3. Start Server
