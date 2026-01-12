@@ -5,33 +5,37 @@ const prisma = new PrismaClient();
 
 export async function registerRoutes(app: FastifyInstance) {
 
-  // --- THE UNIVERSAL DATA OBJECT ---
-  // This object has every field the frontend might look for.
+  // --- THE STATIC DATA ---
   const UNIVERSAL_PROGRAM = {
     id: "static-program-1",
     title: "Mastering AI Agents",
     description: "Full Stack AI Course",
-    status: "PUBLISHED", // <--- The key to visibility
-    thumbnailUrl: "https://placehold.co/600x400/png", // Adds a placeholder image
+    status: "PUBLISHED",
+    thumbnailUrl: "https://placehold.co/600x400/png", 
     languagePrimary: "en",
-    languagesAvailable: ["en"], // Correct list format
-    // We add Lesson fields too, just to be safe
+    languagesAvailable: ["en"], 
     contentType: "VIDEO",
     lessonNumber: 1
   };
 
-  // --- 1. PUBLIC CATALOG ROUTE ---
-  app.get('/api/catalog', async (req, reply) => {
-    // Return the Program so the Catalog finds it
+  // --- 1. THE MISSING ROUTE (Fixes your 404 Error) ---
+  app.get('/catalog/programs', async (req, reply) => {
+    console.log("✅ Hit /catalog/programs");
     return [UNIVERSAL_PROGRAM];
   });
 
-  // --- 2. ADMIN PROGRAMS ROUTE ---
+  // --- 2. THE API ROUTE (Backup) ---
+  app.get('/api/catalog', async (req, reply) => {
+    console.log("✅ Hit /api/catalog");
+    return [UNIVERSAL_PROGRAM];
+  });
+
+  // --- 3. ADMIN LIST ---
   app.get('/api/programs', async (req, reply) => {
     return [UNIVERSAL_PROGRAM];
   });
 
-  // --- 3. LOGIN BYPASS ---
+  // --- 4. LOGIN BYPASS ---
   app.post('/api/login', async () => {
     return { 
       token: 'emergency-token', 
@@ -39,7 +43,7 @@ export async function registerRoutes(app: FastifyInstance) {
     };
   });
 
-  // --- 4. CREATE BYPASS ---
+  // --- 5. CREATE BYPASS ---
   app.post('/api/programs', async (req: FastifyRequest) => {
     return { success: true };
   });
