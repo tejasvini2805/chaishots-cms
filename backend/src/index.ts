@@ -15,7 +15,7 @@ app.register(cors, {
 // 2. Register Routes
 app.register(registerRoutes);
 
-// --- AUTO-PILOT: STRICT MODE ---
+// --- AUTO-PILOT: FINAL CLOUD FIX ---
 async function seedDatabase() {
   try {
     console.log("🌱 Auto-Pilot: Checking for content...");
@@ -31,7 +31,7 @@ async function seedDatabase() {
           description: "Full Stack AI Course",
           status: "DRAFT",
           languagePrimary: "en",
-          languagesAvailable: ["en"] // Fixed: Passed as an Array
+          languagesAvailable: "en" // <--- CHANGED BACK TO STRING (Cloud Requirement)
         }
       });
     }
@@ -61,9 +61,8 @@ async function seedDatabase() {
           termId: term.id,
           contentUrls: "{}",
           subtitleUrls: "{}",
-          // --- THE MISSING FIELDS (FIXED) ---
-          contentType: "VIDEO",
-          contentLanguagePrimary: "en"
+          contentType: "VIDEO",       // Kept this
+          contentLanguagePrimary: "en" // Kept this
         }
       });
       console.log("✅ SUCCESS: Lesson Created and Published!");
