@@ -11,17 +11,17 @@ export async function registerRoutes(app: FastifyInstance) {
     languagePrimary: "en",
     languagesAvailable: "en",
     
-    // Lists to prevent .map() crashes
+    // Safety lists for catalog page
     tags: ["AI", "Agents"],
     outcomes: ["Build AI Apps"],
     requirements: ["Basic JS"],
     
-    // Auth & Category details requested by the template
+    // Template-required objects
     authors: [{ id: "a1", name: "Admin", avatarUrl: "https://placehold.co/50" }],
     instructor: { name: "Admin", bio: "AI Specialist", avatarUrl: "https://placehold.co/50" },
     category: { name: "Technology", slug: "tech" },
     
-    // Content Hierarchy
+    // Content structure
     terms: [
       {
         id: "t1",
@@ -32,7 +32,7 @@ export async function registerRoutes(app: FastifyInstance) {
       }
     ],
 
-    // Empty array fallbacks for components like Ratings, Reviews, and Pricing
+    // Empty array fallbacks for components that map over data
     modules: [],
     curriculum: [],
     lessons: [],
@@ -45,12 +45,12 @@ export async function registerRoutes(app: FastifyInstance) {
   };
 
   const sendData = (reply: FastifyReply, data: any) => {
-    // Force browser to get fresh data instead of the cached "flicker" error
+    // Clear the cache to ensure the browser sees the fix immediately
     reply.header('Cache-Control', 'no-store, no-cache, must-revalidate');
     return data;
   };
 
-  // Your Network tab confirmed the frontend hits this path
+  // This matches the 200 OK request from your network logs
   app.get('/catalog/programs', async (req, reply) => {
     return sendData(reply, [BULLETPROOF_DATA]); 
   });
